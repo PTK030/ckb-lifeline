@@ -1,0 +1,67 @@
+name: Uptime
+
+# Every hour, a light client in a browser checks each node in nodes/*.json and
+# a row per node goes to data/uptime/<network>.csv on the `uptime-data`
+# branch, so the log is public and main's history stays clean.
+on:
+  schedule:
+    - cron: "17 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: uptime
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Anything to check?
+        id: nodes
+        run: |
+          count=$(node -e 'let n=0;for(const f of ["mainnet","testnet"])n+=require(`./nodes/${f}.json`).nodes.length;console.log(n)')
+          echo "count=$count" >> "$GITHUB_OUTPUT"
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        if: steps.nodes.outputs.count != '0'
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - if: steps.nodes.outputs.count != '0'
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+          npm run build
+      - name: Previous log
+        if: steps.nodes.outputs.count != '0'
+        run: |
+          git fetch origin uptime-data || true
+          mkdir -p data/uptime
+          git show origin/uptime-data:mainnet.csv > data/uptime/mainnet.csv 2>/dev/null || rm -f data/uptime/mainnet.csv
+          git show origin/uptime-data:testnet.csv > data/uptime/testnet.csv 2>/dev/null || rm -f data/uptime/testnet.csv
+      - name: Check
+        if: steps.nodes.outputs.count != '0'
+        run: |
+          for network in mainnet testnet; do
+            if [ "$(node -e "console.log(require('./nodes/$network.json').nodes.length)")" != 0 ]; then
+              npx lifeline uptime --network "$network"
+            fi
+          done
+      - name: Publish
+        if: steps.nodes.outputs.count != '0'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          tmp=$(mktemp -d)
+          cp data/uptime/*.csv "$tmp"/
+          git checkout --orphan uptime-data-next
+          git rm -rq --cached .
+          find . -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
+          cp "$tmp"/*.csv .
+          git add ./*.csv
+          git commit -qm "chore(uptime): hourly check $(date -u +%Y-%m-%dT%H:%MZ)"
+          git push -f origin HEAD:uptime-data
