@@ -1,0 +1,12 @@
+{
+  "network": "mainnet",
+  "location": "eu-1",
+  "verdicts": [
+    {
+      "id": "H1",
+      "claim": "Blocking the usual peers cuts the light client off",
+      "passed": true,
+      "detail": "10/10 trials ended with fewer than 2 peers"
+    }
+  ]
+}
