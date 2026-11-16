@@ -37,6 +37,12 @@ describe("hostResolverRules", () => {
     );
   });
 
+  it("a blocked name stays blocked even when it is also mapped (the devnet)", () => {
+    expect(hostResolverRules({ block: ["*.guide.test"], map: { "a.guide.test": "127.0.0.1", "a.lifeline.test": "127.0.0.1" } })).toBe(
+      "MAP *.guide.test ~NOTFOUND, MAP a.guide.test 127.0.0.1, MAP a.lifeline.test 127.0.0.1",
+    );
+  });
+
   it("'only' a public host excludes it from the block", () => {
     expect(hostResolverRules({ only: ["ckb1.example.org"] })).toBe(
       "MAP * ~NOTFOUND, EXCLUDE ckb1.example.org, EXCLUDE localhost, EXCLUDE 127.0.0.1",

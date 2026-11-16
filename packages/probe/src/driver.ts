@@ -32,9 +32,11 @@ export interface ProbeResult {
  * domain is down" can be tested without touching the computer's resolver.
  */
 export function hostResolverRules(opts: Pick<ProbeOptions, "block" | "only" | "map">): string {
+  // The first matching rule wins, so blocks come before the local mappings:
+  // a blocked name stays blocked even when it also has a local address.
   const rules: string[] = [];
-  for (const [host, address] of Object.entries(opts.map ?? {})) rules.push(`MAP ${host} ${address}`);
   for (const pattern of opts.block ?? []) rules.push(`MAP ${pattern} ~NOTFOUND`);
+  for (const [host, address] of Object.entries(opts.map ?? {})) rules.push(`MAP ${host} ${address}`);
   if (opts.only) {
     // EXCLUDE takes a host out of every rule, the MAPs above included, so a
     // mapped host must not be excluded: its own MAP comes first and wins.
