@@ -68,7 +68,9 @@ async function handle(r) {
   if (calls.length === 0 || calls.length > MAX_BATCH) {
     return error(r, 400, null, -32600, `A batch holds 1 to ${MAX_BATCH} requests`);
   }
-  for (const call of calls) {
+  // A plain loop: njs, the JavaScript inside Nginx, has no for...of.
+  for (let i = 0; i < calls.length; i++) {
+    const call = calls[i];
     if (!call || typeof call.method !== "string" || !ALLOWED.includes(call.method)) {
       const name = call && typeof call.method === "string" ? call.method : "(none)";
       return error(r, 403, call && call.id, -32601, `Method ${name} is not available on this public endpoint`);
