@@ -1,0 +1,21 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      tools:
+        patterns: ["*"]
+    # The light client is the thing under test: move it on purpose, with a
+    # fresh test run, not in a batch of updates.
+    ignore:
+      - dependency-name: "@nervosnetwork/ckb-light-client-js"
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+  - package-ecosystem: docker
+    directory: /docker
+    schedule:
+      interval: weekly
