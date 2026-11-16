@@ -6,7 +6,7 @@
   "license": "MIT",
   "type": "module",
   "bin": {
-    "lifeline": "dist/cli.js"
+    "lifeline": "bin/lifeline.js"
   },
   "scripts": {
     "build": "tsc -b",

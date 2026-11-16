@@ -12,7 +12,7 @@
     "typecheck": "npm run typecheck --workspaces --if-present",
     "test": "vitest run",
     "check": "npm run build && npm test && node .github/scripts/commit-subject.mjs --all",
-    "lifeline": "node packages/cli/dist/cli.js",
+    "lifeline": "node packages/cli/bin/lifeline.js",
     "devnet:up": "node devnet/up.mjs",
     "devnet:down": "node devnet/down.mjs"
   },
