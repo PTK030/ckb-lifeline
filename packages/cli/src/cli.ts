@@ -7,6 +7,7 @@ import type { Network } from "@ckb-lifeline/probe";
 import { check, describeCheck } from "./commands/check.js";
 import { CONDITIONS, test, type Condition } from "./commands/test.js";
 import { uptime } from "./commands/uptime.js";
+import { verify } from "./commands/verify.js";
 
 const HELP = `lifeline: CKB nodes for light clients in the browser
 
@@ -22,6 +23,11 @@ Usage
       Runs the light client with the usual peers blocked and not, with and
       without independent nodes, and writes the raw results to data/results/.
 ${Object.entries(CONDITIONS).map(([c, d]) => `        ${c}  ${d}`).join("\n")}
+
+  lifeline verify [--network mainnet] [--node <address>]...
+      One trial of B and one of C, in about five minutes: the light client
+      should be cut off without the usual peers, and synced once independent
+      nodes are listed.
 
   lifeline uptime [--network mainnet] [--out <file>]
       Checks every node in nodes/<network>.json and appends a row each to
@@ -100,6 +106,11 @@ async function main(argv: string[]): Promise<number> {
       for (const v of summary.verdicts) console.log(`${v.id} ${v.passed ? "PASS" : "FAIL"}  ${v.claim}: ${v.detail}`);
       console.log(`Raw results: ${summary.dir}`);
       return 0;
+    }
+    case "verify": {
+      const { lines, expected } = await verify({ root, network: network(values.network), extraNodes: values.node ?? [], log });
+      for (const line of lines) console.log(line);
+      return expected ? 0 : 1;
     }
     case "uptime": {
       const n = network(values.network);
