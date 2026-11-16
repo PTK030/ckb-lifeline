@@ -60,6 +60,15 @@ kill-switch test against it.
 - **Fresh browser per trial.** The light client remembers peers in the
   page's storage. `runProbe` starts a new Chromium every time; reusing one
   would let a trial find peers an earlier one learned.
+- **A light client relays only what it can check.** `sendTransaction` fails
+  with "Unknown OutPoint" unless the client has followed the sender's lock
+  from before the inputs were created. Condition F registers the sender
+  (from its oldest input) and sends once the client has caught up, then keeps
+  the browser open until the transfer is committed: closing it right after
+  sending drops the transaction.
+- **Blocked before mapped.** In `--host-resolver-rules` the first matching
+  rule wins, so blocks are written before the devnet's local mappings;
+  otherwise `*.guide.test` would still resolve.
 - **Blocking happens in the browser.** `--host-resolver-rules` changes
   Chromium's resolver only. Do not "test" by editing the hosts file: that
   changes more than the one thing the test is about.
