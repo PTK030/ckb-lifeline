@@ -7,10 +7,17 @@
     "packages/*"
   ],
   "scripts": {
-    "postinstall": "lefthook install"
+    "postinstall": "lefthook install",
+    "build": "npm run build --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "vitest run",
+    "check": "npm run build && npm test && node .github/scripts/commit-subject.mjs --all"
   },
   "devDependencies": {
-    "lefthook": "2.2.2"
+    "@types/node": "26.6.5",
+    "lefthook": "2.2.2",
+    "typescript": "7.0.2",
+    "vitest": "4.1.12"
   },
   "engines": {
     "node": ">=22"
