@@ -31,8 +31,15 @@ describe("hostResolverRules", () => {
   });
 
   it("maps local names before blocking, and 'only' leaves the page reachable", () => {
+    // A mapped host is not excluded: EXCLUDE would switch its MAP off too.
     expect(hostResolverRules({ map: { "a.lifeline.test": "127.0.0.1" }, only: ["a.lifeline.test"] })).toBe(
-      "MAP a.lifeline.test 127.0.0.1, MAP * ~NOTFOUND, EXCLUDE a.lifeline.test, EXCLUDE localhost, EXCLUDE 127.0.0.1",
+      "MAP a.lifeline.test 127.0.0.1, MAP * ~NOTFOUND, EXCLUDE localhost, EXCLUDE 127.0.0.1",
+    );
+  });
+
+  it("'only' a public host excludes it from the block", () => {
+    expect(hostResolverRules({ only: ["ckb1.example.org"] })).toBe(
+      "MAP * ~NOTFOUND, EXCLUDE ckb1.example.org, EXCLUDE localhost, EXCLUDE 127.0.0.1",
     );
   });
 });

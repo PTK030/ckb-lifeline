@@ -36,8 +36,11 @@ export function hostResolverRules(opts: Pick<ProbeOptions, "block" | "only" | "m
   for (const [host, address] of Object.entries(opts.map ?? {})) rules.push(`MAP ${host} ${address}`);
   for (const pattern of opts.block ?? []) rules.push(`MAP ${pattern} ~NOTFOUND`);
   if (opts.only) {
+    // EXCLUDE takes a host out of every rule, the MAPs above included, so a
+    // mapped host must not be excluded: its own MAP comes first and wins.
     rules.push("MAP * ~NOTFOUND");
-    for (const host of [...opts.only, "localhost", "127.0.0.1"]) rules.push(`EXCLUDE ${host}`);
+    const mapped = new Set(Object.keys(opts.map ?? {}));
+    for (const host of [...opts.only, "localhost", "127.0.0.1"]) if (!mapped.has(host)) rules.push(`EXCLUDE ${host}`);
   }
   return rules.join(", ");
 }
