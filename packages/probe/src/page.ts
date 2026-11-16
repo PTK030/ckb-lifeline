@@ -116,7 +116,9 @@ async function run(request: ProbeRequest) {
       }
     }
 
-    if (request.sendTransaction && !sent && peers.length > 0 && tip !== undefined && tip > 0n) {
+    // The light client checks a transaction against cells it knows, so it
+    // sends only once it has caught up with the sender's lock.
+    if (request.sendTransaction && !sent && peers.length > 0 && tip !== undefined && tip > 0n && (!watch || capacityReported)) {
       sent = true;
       try {
         // The driver passes the transaction in the light client's own form.

@@ -38,6 +38,12 @@ export interface Transfer {
   hash: string;
   /** The transaction in the form the browser light client takes. */
   forLightClient: unknown;
+  /**
+   * The sender's lock and the block before its oldest input. A light client
+   * checks a transaction against cells it knows before relaying it, so it has
+   * to follow this lock from there first.
+   */
+  sender: { script: { code_hash: string; hash_type: ccc.HashType; args: string }; fromBlock: string };
 }
 
 /** Sends 100 CKB from the key's own address back to itself. */
@@ -54,7 +60,19 @@ export async function buildTransfer(network: "devnet" | "testnet", rpcUrl: strin
   await tx.completeFeeBy(signer, 1000);
   const signed = await signer.signTransaction(tx);
 
-  return { hash: signed.hash(), forLightClient: toPlain(signed) };
+  let oldest: bigint | undefined;
+  for (const input of signed.inputs) {
+    const origin = await rpc<{ tx_status: { block_number: string | null } } | null>(rpcUrl, "get_transaction", [input.previousOutput.txHash]);
+    const block = origin?.tx_status.block_number;
+    if (block) oldest = oldest === undefined || BigInt(block) < oldest ? BigInt(block) : oldest;
+  }
+  const fromBlock = oldest === undefined || oldest === 0n ? 0n : oldest - 1n;
+
+  return {
+    hash: signed.hash(),
+    forLightClient: toPlain(signed),
+    sender: { script: { code_hash: lock.codeHash, hash_type: lock.hashType, args: lock.args }, fromBlock: fromBlock.toString() },
+  };
 }
 
 /** bigint fields as hex, and nothing but the fields a transaction has. */

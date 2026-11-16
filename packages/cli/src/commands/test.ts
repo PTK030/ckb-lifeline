@@ -115,6 +115,10 @@ export async function test(opts: TestOptions): Promise<TestSummary> {
         transfer = await buildTransfer(opts.network as "devnet" | "testnet", profile.referenceRpc, key);
       }
 
+      // A transfer's sender is followed first (the light client relays only
+      // what it can check); otherwise the address from --watch, if any.
+      const watchFor = transfer?.sender ?? (watchScript && opts.watch ? { script: watchScript, fromBlock: opts.watch.fromBlock } : undefined);
+
       // F: the browser stays open until the transfer is committed, because the
       // light client relays it only while it runs. A watcher asks the
       // reference node meanwhile.
@@ -131,7 +135,16 @@ export async function test(opts: TestOptions): Promise<TestSummary> {
         }
       })();
 
+      // The reference balance is read the moment the light client reports its
+      // own, before a transfer from the same lock changes it.
+      let referenceCapacityAtReport: Promise<bigint | undefined> = Promise.resolve(undefined);
+      let capacitySeen = false;
+
       const doneWhen = (events: readonly ProbeEvent[]) => {
+        if (!capacitySeen && watchFor && events.some((e) => e.kind === "capacity")) {
+          capacitySeen = true;
+          referenceCapacityAtReport = cellsCapacity(profile.referenceRpc, watchFor.script).catch(() => undefined);
+        }
         if (sentAt === undefined && events.some((e) => e.kind === "sent")) sentAt = Date.now();
         if (!plan.stopWhenSynced) return false;
         const last = events.findLast((e) => e.kind === "sample");
@@ -139,7 +152,7 @@ export async function test(opts: TestOptions): Promise<TestSummary> {
         const tip = last.sample.tip === undefined ? 0n : BigInt(last.sample.tip);
         const synced = last.sample.peers.length >= PEERS_TO_SYNC && tip > 0n && (referenceAtStart === undefined || tip + TIP_LAG_LIMIT >= referenceAtStart);
         const sendDone = !plan.send || committedAt !== undefined || events.some((e) => e.kind === "error");
-        const capacityOk = !watchScript || events.some((e) => e.kind === "capacity");
+        const capacityOk = !watchFor || events.some((e) => e.kind === "capacity");
         return synced && sendDone && capacityOk;
       };
 
@@ -149,7 +162,7 @@ export async function test(opts: TestOptions): Promise<TestSummary> {
           bootnodes: plan.bootnodes,
           maxOutboundPeers: 4,
           devnetSpec: profile.devnetSpec,
-          watch: watchScript && opts.watch ? { script: watchScript, fromBlock: opts.watch.fromBlock } : undefined,
+          watch: watchFor,
           sendTransaction: transfer?.forLightClient,
           sampleEveryMs: 2000,
         },
@@ -170,9 +183,11 @@ export async function test(opts: TestOptions): Promise<TestSummary> {
       let lightCapacity: bigint | undefined;
       let referenceCapacity: bigint | undefined;
       const capacityEvent = result.events.find((e) => e.kind === "capacity");
-      if (watchScript && capacityEvent?.kind === "capacity") {
+      // A transfer's sender is followed only from its oldest input, which is
+      // enough to send but not a whole balance: only --watch is compared.
+      if (!transfer && watchFor && capacityEvent?.kind === "capacity") {
         lightCapacity = BigInt(capacityEvent.capacity);
-        referenceCapacity = await cellsCapacity(profile.referenceRpc, watchScript).catch(() => undefined);
+        referenceCapacity = await referenceCapacityAtReport;
         if (referenceCapacity !== undefined) capacities.push({ light: lightCapacity, reference: referenceCapacity });
       }
 
