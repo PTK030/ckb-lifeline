@@ -1,0 +1,27 @@
+
+        # Public JSON-RPC (RPC_PUBLIC=true): POST https://${DOMAIN}/rpc.
+        # rpc.js passes on only the read methods and send_transaction.
+        location = /rpc {
+            limit_req zone=rpc burst=${RPC_BURST} nodelay;
+            limit_req_status 429;
+            client_max_body_size 64k;
+            client_body_buffer_size 64k;
+
+            add_header Access-Control-Allow-Origin "*" always;
+            add_header Access-Control-Allow-Methods "POST, OPTIONS" always;
+            add_header Access-Control-Allow-Headers "Content-Type" always;
+            add_header Access-Control-Max-Age 86400 always;
+            if ($request_method = OPTIONS) {
+                return 204;
+            }
+
+            js_content rpc.handle;
+        }
+
+        location = /_ckb_rpc {
+            internal;
+            proxy_pass http://${CKB_HOST}:${CKB_RPC_PORT}/;
+            proxy_set_header Content-Type "application/json";
+            proxy_read_timeout 30s;
+            subrequest_output_buffer_size 8m;
+        }
