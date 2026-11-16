@@ -1,0 +1,103 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+# A newer push to the same ref makes the run still going pointless.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  tools:
+    name: tools (types, build, tests)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - name: Types and build
+        run: npm run build && npm run typecheck
+      - name: Unit tests
+        run: npm test
+      - name: Commit subjects
+        if: github.event_name == 'pull_request'
+        run: node .github/scripts/commit-subject.mjs "${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }}"
+
+  # The node recipe: the compose files render, the shell scripts are clean and
+  # Nginx accepts the config it renders, with and without the public RPC.
+  recipe:
+    name: node recipe
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Compose files
+        run: |
+          cp node/.env.example node/.env
+          docker compose -f node/compose.yaml config --quiet
+          docker compose -f devnet/compose.yaml config --quiet
+      - name: Shell scripts
+        run: shellcheck node/ckb/entrypoint.sh node/nginx/40-lifeline.sh node/scripts/*.sh
+      - name: Nginx config
+        run: |
+          mkdir -p tls
+          openssl req -x509 -nodes -newkey rsa:2048 -days 1 -subj /CN=ckb1.example.org \
+            -keyout tls/privkey.pem -out tls/fullchain.pem
+          # Before the first certificate (port 80 only), then the full config
+          # with and without the public RPC.
+          for mode in letsencrypt:false files:false files:true; do
+            docker run --rm \
+              -e DOMAIN=ckb1.example.org -e TLS_MODE="${mode%%:*}" -e RPC_PUBLIC="${mode##*:}" \
+              --add-host ckb:127.0.0.1 \
+              -v "$PWD/node/nginx/40-lifeline.sh:/docker-entrypoint.d/40-lifeline.sh:ro" \
+              -v "$PWD/node/nginx:/lifeline:ro" \
+              -v "$PWD/tls:/etc/lifeline-tls:ro" \
+              nginx:1.30.6-alpine nginx -t
+          done
+
+  # A real light client against the local devnet: every node passes check, and
+  # the usual-peers-blocked test behaves as on mainnet.
+  devnet:
+    name: devnet end to end
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run build
+      - name: Start the devnet
+        run: npm run devnet:up
+      - name: Check every node
+        run: |
+          for address in $(node -e 'const d=require("./devnet/data/lifeline.json");console.log([...d.guide,...d.independent].join(" "))'); do
+            npx lifeline check --network devnet "$address" --seconds 120
+          done
+      - name: Kill-switch test
+        run: npx lifeline test --network devnet --conditions A,B,C,F --trials 2 --seconds 120 --location ci --out devnet-results
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: devnet-results
+          path: devnet-results
+          retention-days: 14
+      - name: Node logs
+        if: failure()
+        run: docker compose -f devnet/compose.yaml logs --tail 200
