@@ -1,0 +1,4 @@
+{
+  "description": "Independent CKB testnet nodes that serve browser light clients over WSS. Apps copy this list into their build; nothing fetches it at run time. To add a node, open a pull request after `lifeline check --network testnet` passes for it (docs/node-recipe.md).",
+  "nodes": []
+}
