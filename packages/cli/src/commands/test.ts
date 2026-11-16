@@ -115,15 +115,32 @@ export async function test(opts: TestOptions): Promise<TestSummary> {
         transfer = await buildTransfer(opts.network as "devnet" | "testnet", profile.referenceRpc, key);
       }
 
+      // F: the browser stays open until the transfer is committed, because the
+      // light client relays it only while it runs. A watcher asks the
+      // reference node meanwhile.
+      let sentAt: number | undefined;
+      let committedAt: number | undefined;
+      let watching = !!transfer;
+      const watcher = (async () => {
+        while (watching && transfer) {
+          if ((await transactionStatus(profile.referenceRpc, transfer.hash).catch(() => undefined)) === "committed") {
+            committedAt = Date.now();
+            return;
+          }
+          await new Promise((r) => setTimeout(r, 2000));
+        }
+      })();
+
       const doneWhen = (events: readonly ProbeEvent[]) => {
+        if (sentAt === undefined && events.some((e) => e.kind === "sent")) sentAt = Date.now();
         if (!plan.stopWhenSynced) return false;
         const last = events.findLast((e) => e.kind === "sample");
         if (last?.kind !== "sample") return false;
         const tip = last.sample.tip === undefined ? 0n : BigInt(last.sample.tip);
         const synced = last.sample.peers.length >= PEERS_TO_SYNC && tip > 0n && (referenceAtStart === undefined || tip + TIP_LAG_LIMIT >= referenceAtStart);
-        const sentOk = !plan.send || events.some((e) => e.kind === "sent" || e.kind === "error");
+        const sendDone = !plan.send || committedAt !== undefined || events.some((e) => e.kind === "error");
         const capacityOk = !watchScript || events.some((e) => e.kind === "capacity");
-        return synced && sentOk && capacityOk;
+        return synced && sendDone && capacityOk;
       };
 
       const result = await runProbe({
@@ -136,12 +153,15 @@ export async function test(opts: TestOptions): Promise<TestSummary> {
           sendTransaction: transfer?.forLightClient,
           sampleEveryMs: 2000,
         },
-        durationMs: opts.durationSec * 1000,
+        // A transfer gets the 10 minutes H4 allows, on top of the time to sync.
+        durationMs: (opts.durationSec + (plan.send ? 600 : 0)) * 1000,
         block: plan.block,
         map: profile.map,
         insecureTls: profile.insecureTls,
         done: doneWhen,
       });
+      watching = false;
+      await watcher;
 
       const referenceAtEnd = await tipNumber(profile.referenceRpc).catch(() => undefined);
       const metrics = trialMetrics(result.samples, referenceAtStart, referenceAtEnd);
@@ -156,21 +176,8 @@ export async function test(opts: TestOptions): Promise<TestSummary> {
         if (referenceCapacity !== undefined) capacities.push({ light: lightCapacity, reference: referenceCapacity });
       }
 
-      let txSeconds: number | undefined;
-      const sent = result.events.find((e) => e.kind === "sent");
-      if (transfer) {
-        if (sent?.kind === "sent") {
-          const t0 = Date.now();
-          while (Date.now() - t0 < 600_000) {
-            if ((await transactionStatus(profile.referenceRpc, transfer.hash).catch(() => undefined)) === "committed") {
-              txSeconds = Math.round((Date.now() - t0) / 1000);
-              break;
-            }
-            await new Promise((r) => setTimeout(r, 3000));
-          }
-        }
-        committed.push(txSeconds);
-      }
+      const txSeconds = sentAt !== undefined && committedAt !== undefined ? Math.max(0, Math.round((committedAt - sentAt) / 1000)) : undefined;
+      if (transfer) committed.push(txSeconds);
 
       const errors = result.events.flatMap((e) => (e.kind === "error" ? [e.message] : [])).join(" | ");
       appendRow(trialsCsv, TRIAL_HEADER, [
