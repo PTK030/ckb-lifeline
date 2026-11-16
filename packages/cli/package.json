@@ -1,0 +1,19 @@
+{
+  "name": "@ckb-lifeline/cli",
+  "version": "0.1.0",
+  "private": true,
+  "description": "lifeline: check a CKB node for browser light clients, and test what happens when the usual peers are gone.",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "lifeline": "dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "typecheck": "tsc -b"
+  },
+  "dependencies": {
+    "@ckb-ccc/core": "1.23.0",
+    "@ckb-lifeline/probe": "0.1.0"
+  }
+}
