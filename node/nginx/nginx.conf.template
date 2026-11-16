@@ -52,7 +52,6 @@ http {
     # Port 80 answers certificate challenges and sends everything else to 443.
     server {
         listen 80;
-        listen [::]:80;
         server_name _;
 
         location /.well-known/acme-challenge/ {
