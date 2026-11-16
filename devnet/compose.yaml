@@ -28,7 +28,9 @@ x-ckb: &ckb
 x-ckb-env: &ckb-env
   CKB_NETWORK: dev
   CKB_SPEC_FILE: /specs/dev.toml
-  CKB_BA_ARG: "0xc8328aabcd9b9e8e64fbc566c4385c3bdeb219d7"
+  # Block rewards go to a lock nobody uses, so that the two funded genesis
+  # keys only change when a test sends from them (H3 compares balances).
+  CKB_BA_ARG: "0x0000000000000000000000000000000000000001"
   LIFELINE_SHARE: /share
   LIFELINE_BOOTNODES: guide-a
 

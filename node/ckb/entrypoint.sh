@@ -81,6 +81,9 @@ if [ "$CKB_INDEXER" = true ] && ! echo "$modules" | grep -q Indexer; then
 fi
 set_toml rpc modules "$(toml_list "$modules")"
 set_toml rpc rpc_batch_limit "$CKB_RPC_BATCH_LIMIT"
+if [ "$CKB_NETWORK" = dev ] && [ -n "$CKB_BA_ARG" ] && grep -q '^\[block_assembler\]' ckb.toml; then
+  set_toml block_assembler args "\"$CKB_BA_ARG\""
+fi
 
 if [ -n "$LIFELINE_SHARE" ] && [ -n "$LIFELINE_NAME" ]; then
   echo "/dns4/$LIFELINE_NAME/tcp/$CKB_P2P_PORT/p2p/$PEER_ID" > "$LIFELINE_SHARE/$LIFELINE_NAME.addr"
