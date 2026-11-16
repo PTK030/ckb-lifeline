@@ -1,0 +1,15 @@
+# Git hooks, installed by `npm install` at the repository root. Quick checks
+# on what is being committed; CI runs the full set (docs/development.md).
+# `git commit --no-verify` skips them when you must.
+
+pre-commit:
+  parallel: true
+  commands:
+    types:
+      glob: "packages/**/*.ts"
+      run: npm run typecheck
+
+commit-msg:
+  commands:
+    subject:
+      run: node .github/scripts/commit-subject.mjs --file {1}
