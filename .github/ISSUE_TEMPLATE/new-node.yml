@@ -1,0 +1,32 @@
+name: Add my node
+description: You run a node for browser light clients and want it in nodes/. A pull request is even better.
+labels: [node]
+body:
+  - type: input
+    id: address
+    attributes:
+      label: Address
+      placeholder: /dns4/ckb1.example.org/tcp/443/wss/p2p/Qm...
+    validations:
+      required: true
+  - type: dropdown
+    id: network
+    attributes:
+      label: Network
+      options: [mainnet, testnet]
+    validations:
+      required: true
+  - type: input
+    id: operator
+    attributes:
+      label: Operator
+      description: Your name or handle, and how to reach you if the node goes down.
+    validations:
+      required: true
+  - type: textarea
+    id: check
+    attributes:
+      label: lifeline check output
+      render: text
+    validations:
+      required: true

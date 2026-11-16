@@ -1,0 +1,22 @@
+name: Something does not work
+description: The recipe, the devnet or the lifeline tools behave differently from the docs.
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you ran, what you expected, and what you got instead.
+    validations:
+      required: true
+  - type: textarea
+    id: output
+    attributes:
+      label: Output
+      description: The command's output, and `docker compose logs --tail 100` if a container is involved.
+      render: text
+  - type: input
+    id: versions
+    attributes:
+      label: Versions
+      description: CKB_IMAGE, the commit of this repository, OS.
