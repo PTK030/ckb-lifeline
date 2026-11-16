@@ -24,17 +24,34 @@ const sh = (cmd, args, opts = {}) => execFileSync(cmd, args, { cwd: here, encodi
 const compose = (...args) => sh("docker", ["compose", ...args]);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-// 1. Certificate
+// 1. Certificate: openssl from the PATH, or the one Git for Windows ships.
+function openssl() {
+  const candidates = ["openssl"];
+  if (process.platform === "win32") {
+    for (const base of [process.env.ProgramFiles, process.env["ProgramFiles(x86)"]].filter(Boolean)) {
+      candidates.push(join(base, "Git", "usr", "bin", "openssl.exe"), join(base, "Git", "mingw64", "bin", "openssl.exe"));
+    }
+  }
+  for (const c of candidates) {
+    try {
+      execFileSync(c, ["version"], { stdio: "ignore" });
+      return c;
+    } catch {
+      // try the next one
+    }
+  }
+  throw new Error("devnet:up needs openssl (on Windows it comes with Git for Windows)");
+}
+
 const certs = join(here, "certs");
 if (!existsSync(join(certs, "fullchain.pem"))) {
   mkdirSync(certs, { recursive: true });
   const san = Object.values(NODES).map((n) => `DNS:${n.host}`).join(",");
-  sh("docker", [
-    "run", "--rm", "-v", `${certs}:/out`, process.env.NGINX_IMAGE ?? "nginx:1.30.6-alpine",
-    "openssl", "req", "-x509", "-nodes", "-newkey", "rsa:2048", "-days", "825",
+  sh(openssl(), [
+    "req", "-x509", "-nodes", "-newkey", "rsa:2048", "-days", "825",
     "-subj", "/CN=ckb-lifeline devnet", "-addext", `subjectAltName=${san}`,
-    "-keyout", "/out/privkey.pem", "-out", "/out/fullchain.pem",
-  ]);
+    "-keyout", join(certs, "privkey.pem"), "-out", join(certs, "fullchain.pem"),
+  ], { env: { ...process.env, MSYS_NO_PATHCONV: "1" } });
   console.log("made devnet/certs (self-signed, for the four .test names)");
 }
 
