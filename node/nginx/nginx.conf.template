@@ -1,0 +1,97 @@
+# Rendered into /etc/nginx/nginx.conf by 40-lifeline.sh at every start.
+# ${NAME} values come from the environment (node/.env); $name values are Nginx's.
+${NJS_MODULE}
+worker_processes auto;
+pid /var/run/nginx.pid;
+
+events {
+    worker_connections 4096;
+}
+
+# Port 443 carries two kinds of traffic. A TLS handshake is a browser (or any
+# WSS client): it goes to the TLS server below, which turns WSS into the
+# node's own WebSocket. Anything else is another node speaking plain P2P over
+# TCP, and goes straight to the node.
+stream {
+    log_format lifeline '$remote_addr [$time_local] $ssl_preread_protocol '
+                        '$status $bytes_sent $bytes_received $session_time $upstream_addr';
+    access_log ${STREAM_ACCESS_LOG};
+    error_log /dev/stderr warn;
+
+    map $ssl_preread_protocol $lifeline_upstream {
+        ""      ckb_p2p;
+        default lifeline_tls;
+    }
+
+    upstream ckb_p2p {
+        server ${CKB_HOST}:${CKB_P2P_PORT};
+    }
+
+    upstream lifeline_tls {
+        server 127.0.0.1:8443;
+    }
+
+    server {
+        listen 443;
+        ssl_preread on;
+        proxy_pass $lifeline_upstream;
+        # A light client keeps its connection for hours; the node pings it
+        # every two minutes, so an hour of silence means it is gone.
+        proxy_timeout 1h;
+    }
+}
+
+http {
+    server_tokens off;
+    access_log off;
+    error_log /dev/stderr warn;
+    ${NJS_IMPORT}
+
+    limit_req_zone $binary_remote_addr zone=rpc:10m rate=${RPC_RATE};
+
+    # Port 80 answers certificate challenges and sends everything else to 443.
+    server {
+        listen 80;
+        listen [::]:80;
+        server_name _;
+
+        location /.well-known/acme-challenge/ {
+            root /var/www/acme;
+        }
+
+        location / {
+            return 301 https://$host$request_uri;
+        }
+    }
+
+    server {
+        listen 127.0.0.1:8443 ssl;
+        server_name ${DOMAIN};
+
+        ssl_certificate ${TLS_CERT};
+        ssl_certificate_key ${TLS_KEY};
+        ssl_protocols TLSv1.2 TLSv1.3;
+        ssl_session_cache shared:tls:10m;
+        ssl_session_timeout 1d;
+
+        location = /health {
+            default_type text/plain;
+            return 200 "ok\n";
+        }
+
+        # The node accepts WebSocket on its P2P port (reuse_tcp_with_ws).
+        location / {
+            if ($http_upgrade != "websocket") {
+                return 426 "This is a CKB node. Light clients connect here over WebSocket.\n";
+            }
+            proxy_pass http://${CKB_HOST}:${CKB_P2P_PORT};
+            proxy_http_version 1.1;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection "upgrade";
+            proxy_set_header Host $host;
+            proxy_read_timeout 3600s;
+            proxy_send_timeout 3600s;
+        }
+${RPC_LOCATIONS}
+    }
+}
