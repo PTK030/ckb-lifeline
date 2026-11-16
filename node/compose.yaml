@@ -1,0 +1,74 @@
+# One CKB full node that light clients in browsers can reach.
+#
+#   ckb      the node (the official nervos/ckb image), P2P on 8115
+#   nginx    port 443: WSS for browsers, plain P2P for other nodes;
+#            port 80: certificate challenges; optionally a public JSON-RPC
+#   certbot  keeps the Let's Encrypt certificate fresh
+#
+# Settings come from .env next to this file (copy .env.example).
+# docs/node-recipe.md walks through it from an empty server.
+
+name: ckb-lifeline
+
+services:
+  ckb:
+    image: ${CKB_IMAGE:-nervos/ckb:v0.210.0}
+    restart: unless-stopped
+    entrypoint: ["/lifeline/entrypoint.sh"]
+    environment:
+      CKB_NETWORK: ${CKB_NETWORK:-mainnet}
+      PUBLIC_HOST: ${DOMAIN:?set DOMAIN in .env}
+      PUBLIC_PORT: "443"
+      CKB_INDEXER: ${RPC_PUBLIC:-false}
+      CKB_LOG: ${CKB_LOG:-info}
+    volumes:
+      - ckb-data:/var/lib/ckb
+      - ./ckb:/lifeline:ro
+    ports:
+      - "${P2P_PORT:-8115}:8115"
+    stop_grace_period: 2m
+    logging: &logging
+      driver: json-file
+      options:
+        max-size: 50m
+        max-file: "3"
+
+  nginx:
+    image: ${NGINX_IMAGE:-nginx:1.30.6-alpine}
+    restart: unless-stopped
+    depends_on:
+      - ckb
+    environment:
+      DOMAIN: ${DOMAIN}
+      TLS_MODE: letsencrypt
+      RPC_PUBLIC: ${RPC_PUBLIC:-false}
+      RPC_RATE: ${RPC_RATE:-10r/s}
+      RPC_BURST: ${RPC_BURST:-20}
+    volumes:
+      - ./nginx/40-lifeline.sh:/docker-entrypoint.d/40-lifeline.sh:ro
+      - ./nginx:/lifeline:ro
+      - letsencrypt:/etc/letsencrypt
+      - acme:/var/www/acme
+    ports:
+      - "80:80"
+      - "443:443"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "--no-check-certificate", "https://127.0.0.1:8443/health"]
+      interval: 1m
+      timeout: 5s
+      retries: 3
+    logging: *logging
+
+  certbot:
+    image: ${CERTBOT_IMAGE:-certbot/certbot:v5.9.0}
+    restart: unless-stopped
+    entrypoint: ["/bin/sh", "-c", "trap exit TERM; while :; do certbot renew --webroot -w /var/www/acme --quiet; sleep 12h & wait $${!}; done"]
+    volumes:
+      - letsencrypt:/etc/letsencrypt
+      - acme:/var/www/acme
+    logging: *logging
+
+volumes:
+  ckb-data:
+  letsencrypt:
+  acme:
