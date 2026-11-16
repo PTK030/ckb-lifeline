@@ -1,0 +1,121 @@
+# A local devnet to try everything without waiting for a real chain to sync.
+# Start it with `npm run devnet:up` (which also makes the certificate and
+# tells the tools where the nodes are), not with `docker compose up` alone.
+#
+# Four nodes, each run exactly like node/compose.yaml runs one: the same
+# entrypoint and the same Nginx config, with a local certificate instead of
+# Let's Encrypt.
+#
+#   a.guide.test, b.guide.test        stand in for the usual peers (*.ckb.guide)
+#   a.lifeline.test, b.lifeline.test  stand in for independent nodes
+#
+# A browser reaches them on 127.0.0.1:4431-4434; the tools map the names.
+# This file is for a laptop only: the nodes run as root so they can share
+# their addresses, and the RPC of the first node is open on 127.0.0.1:8114.
+
+name: ckb-lifeline-devnet
+
+x-ckb: &ckb
+  image: ${CKB_IMAGE:-nervos/ckb:v0.210.0}
+  user: "0:0"
+  entrypoint: ["/lifeline/entrypoint.sh"]
+  volumes:
+    - ../node/ckb:/lifeline:ro
+    - ./specs:/specs:ro
+    - share:/share
+  restart: unless-stopped
+
+x-ckb-env: &ckb-env
+  CKB_NETWORK: dev
+  CKB_SPEC_FILE: /specs/dev.toml
+  CKB_BA_ARG: "0xc8328aabcd9b9e8e64fbc566c4385c3bdeb219d7"
+  LIFELINE_SHARE: /share
+  LIFELINE_BOOTNODES: guide-a
+
+x-nginx: &nginx
+  image: ${NGINX_IMAGE:-nginx:1.30.6-alpine}
+  volumes:
+    - ../node/nginx/40-lifeline.sh:/docker-entrypoint.d/40-lifeline.sh:ro
+    - ../node/nginx:/lifeline:ro
+    - ./certs:/etc/lifeline-tls:ro
+  restart: unless-stopped
+
+services:
+  guide-a:
+    <<: *ckb
+    environment:
+      <<: *ckb-env
+      LIFELINE_NAME: guide-a
+      PUBLIC_HOST: a.guide.test
+      PUBLIC_PORT: "4431"
+      CKB_INDEXER: "true"
+      CKB_RPC_MODULES: Net,Pool,Chain,Stats,Miner,Experiment
+    volumes:
+      - ../node/ckb:/lifeline:ro
+      - ./specs:/specs:ro
+      - share:/share
+      - guide-a:/var/lib/ckb
+    ports:
+      - "127.0.0.1:8114:8114"
+  guide-b:
+    <<: *ckb
+    environment:
+      <<: *ckb-env
+      LIFELINE_NAME: guide-b
+      PUBLIC_HOST: b.guide.test
+      PUBLIC_PORT: "4432"
+  lifeline-a:
+    <<: *ckb
+    environment:
+      <<: *ckb-env
+      LIFELINE_NAME: lifeline-a
+      PUBLIC_HOST: a.lifeline.test
+      PUBLIC_PORT: "4433"
+  lifeline-b:
+    <<: *ckb
+    environment:
+      <<: *ckb-env
+      LIFELINE_NAME: lifeline-b
+      PUBLIC_HOST: b.lifeline.test
+      PUBLIC_PORT: "4434"
+
+  # Mines a block every few seconds into guide-a (Dummy proof of work).
+  miner:
+    image: ${CKB_IMAGE:-nervos/ckb:v0.210.0}
+    user: "0:0"
+    depends_on: [guide-a]
+    volumes:
+      - guide-a:/var/lib/ckb
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        until [ -f /var/lib/ckb/ckb-miner.toml ]; do sleep 1; done
+        sed -i 's#^rpc_url = .*#rpc_url = "http://guide-a:8114/"#; s#^value = .*#value = 2000#' /var/lib/ckb/ckb-miner.toml
+        until ckb miner -C /var/lib/ckb; do sleep 2; done
+    restart: unless-stopped
+
+  tls-guide-a:
+    <<: *nginx
+    depends_on: [guide-a]
+    environment: { DOMAIN: a.guide.test, TLS_MODE: files, CKB_HOST: guide-a }
+    ports: ["127.0.0.1:4431:443"]
+  tls-guide-b:
+    <<: *nginx
+    depends_on: [guide-b]
+    environment: { DOMAIN: b.guide.test, TLS_MODE: files, CKB_HOST: guide-b }
+    ports: ["127.0.0.1:4432:443"]
+  tls-lifeline-a:
+    <<: *nginx
+    depends_on: [lifeline-a]
+    environment: { DOMAIN: a.lifeline.test, TLS_MODE: files, CKB_HOST: lifeline-a }
+    ports: ["127.0.0.1:4433:443"]
+  tls-lifeline-b:
+    <<: *nginx
+    depends_on: [lifeline-b]
+    environment: { DOMAIN: b.lifeline.test, TLS_MODE: files, CKB_HOST: lifeline-b }
+    ports: ["127.0.0.1:4434:443"]
+
+volumes:
+  share:
+  guide-a:
