@@ -201,7 +201,7 @@ export async function test(opts: TestOptions): Promise<TestSummary> {
         metrics.tipAtEnd, metrics.referenceTipAtEnd, metrics.tipLag, isConnected(metrics), isCutOff(metrics),
         lightCapacity, referenceCapacity, transfer?.hash, txSeconds, errors || undefined,
       ]);
-      appendFileSync(samplesJsonl, JSON.stringify({ run, condition, trial, samples: result.samples }) + "\n");
+      appendFileSync(samplesJsonl, JSON.stringify({ run, condition, trial, events: result.events.filter((e) => e.kind !== "sample"), samples: result.samples }) + "\n");
       log(
         `    peers ${metrics.peersAtEnd} (max ${metrics.peersMax}), tip ${metrics.tipAtEnd ?? "-"} / ${metrics.referenceTipAtEnd ?? "-"}` +
           (transfer ? `, tx ${txSeconds !== undefined ? `committed in ${txSeconds} s` : "not committed"}` : ""),
