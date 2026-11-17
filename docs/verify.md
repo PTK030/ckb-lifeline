@@ -27,6 +27,10 @@ B blocks `*.ckb.guide` in the browser's own resolver and starts from the peer
 list apps use today. C does the same and adds the independent nodes from
 `nodes/mainnet.json`. Your computer's DNS is not touched.
 
+While `nodes/mainnet.json` lists no node yet, C is skipped and the output says
+so. To see C anyway, give it a node with `--node <address>`, or run it on the
+local devnet (`npm run devnet:up`, then `npx lifeline verify --network devnet`).
+
 ## 2. In your own browser (about 3 minutes)
 
 1. `npm run build`, then serve `packages/probe/dist/page/` with the two headers
