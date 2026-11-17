@@ -5,7 +5,7 @@
 #
 # Built from the repository root: docker build -f docker/lifeline-test.Dockerfile .
 
-FROM mcr.microsoft.com/playwright:v1.64.1-noble AS build
+FROM mcr.microsoft.com/playwright:v1.65.1-noble AS build
 WORKDIR /app
 COPY package.json package-lock.json tsconfig.base.json ./
 COPY packages/probe/package.json packages/probe/
@@ -14,7 +14,7 @@ RUN npm ci --ignore-scripts
 COPY packages packages
 RUN npm run build
 
-FROM mcr.microsoft.com/playwright:v1.64.1-noble
+FROM mcr.microsoft.com/playwright:v1.65.1-noble
 WORKDIR /app
 ENV NODE_ENV=production
 COPY --from=build /app/package.json /app/package-lock.json ./
