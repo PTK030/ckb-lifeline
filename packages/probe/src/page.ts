@@ -147,25 +147,85 @@ function render(event: ProbeEvent) {
     status.textContent = `${Math.round(t / 1000)} s`;
     $("list")!.textContent = peers.map((p) => p.addresses[0] ?? p.nodeId).join("\n");
   } else if (event.kind === "error") {
-    status.textContent = event.message;
+    // The light client is WebAssembly: when it stops, the browser reports
+    // only "unreachable". Say what that means, and keep the raw message.
+    const stopped = /unreachable/i.test(event.message);
+    showError(
+      stopped ? "The light client stopped. Reload the page to start it again." : event.message,
+      stopped ? event.message : undefined,
+    );
   }
 }
 
-function fromForm(): ProbeRequest {
+function showError(message: string, detail?: string) {
+  const box = $("error");
+  if (!box) return;
+  box.textContent = message;
+  if (detail) {
+    const small = document.createElement("span");
+    small.textContent = detail;
+    box.append(small);
+  }
+  box.hidden = false;
+}
+
+const ADDRESS = /^\/dns[46]\/[^/\s]+\/tcp\/\d+\/wss\/p2p\/Qm[1-9A-HJ-NP-Za-km-z]{44}$/;
+
+/** The form as a request, or why it cannot start. */
+function fromForm(): ProbeRequest | string {
   const network = ($("network") as HTMLSelectElement).value as Network;
-  const bootnodes = ($("bootnodes") as HTMLTextAreaElement).value
+  const entries = ($("bootnodes") as HTMLTextAreaElement).value
     .split(/\s+/)
     .map((s) => s.trim().replace(/^"|",?$/g, ""))
     .filter(Boolean);
-  return { network, bootnodes, maxOutboundPeers: 4, sampleEveryMs: 2000 };
+  if (entries.length === 0) return "Paste at least one peer address, one per line.";
+  const wrong = entries.filter((e) => !ADDRESS.test(e));
+  if (wrong.length) return `Not a peer address: ${wrong[0]}. Expected /dns4/<domain>/tcp/<port>/wss/p2p/<peer id>.`;
+  return { network, bootnodes: entries, maxOutboundPeers: 4, sampleEveryMs: 2000 };
 }
+
+/**
+ * The light client keeps its chain and the peers it met in this page's
+ * IndexedDB. A run must start from the listed peers only, and a store from
+ * another network stops the client, so every run starts with none.
+ */
+async function freshStorage(): Promise<void> {
+  const dbs = (await indexedDB.databases?.()) ?? [];
+  await Promise.all(
+    dbs.map(
+      (db) =>
+        new Promise<void>((resolve, reject) => {
+          if (!db.name) return resolve();
+          const req = indexedDB.deleteDatabase(db.name);
+          req.onsuccess = () => resolve();
+          req.onerror = () => reject(new Error(`could not clear ${db.name}`));
+          req.onblocked = () => reject(new Error("This page is open in another tab. Close it, then reload this one."));
+        }),
+    ),
+  );
+}
+
+const start = (request: ProbeRequest) =>
+  freshStorage()
+    .then(() => run(request))
+    .catch((e) => emit({ kind: "error", t: elapsed(), message: e instanceof Error ? e.message : String(e) }));
 
 if (window.__LIFELINE_REQUEST__) {
   document.body.dataset.mode = "driven";
-  void run(window.__LIFELINE_REQUEST__).catch((e) => emit({ kind: "error", t: elapsed(), message: String(e) }));
+  void start(window.__LIFELINE_REQUEST__);
 } else {
   $("start")?.addEventListener("click", () => {
+    const request = fromForm();
+    const hint = $("hint");
+    if (typeof request === "string") {
+      if (hint) {
+        hint.textContent = request;
+        hint.hidden = false;
+      }
+      return;
+    }
+    if (hint) hint.hidden = true;
     document.body.dataset.mode = "running";
-    void run(fromForm()).catch((e) => emit({ kind: "error", t: elapsed(), message: String(e) }));
+    void start(request);
   });
 }
