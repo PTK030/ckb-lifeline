@@ -36,6 +36,13 @@ npm run devnet:down      # --wipe to start the chain over
 `npm run devnet:up` prints each node's address; `devnet/data/lifeline.json`
 has them too.
 
+To watch a light client while you take nodes away, run
+`npx lifeline watch --network devnet`: it opens a visible Chromium and prints
+which nodes the client is connected to every 2 seconds. In a second terminal,
+`docker stop ckb-lifeline-devnet-tls-guide-a-1 ckb-lifeline-devnet-tls-guide-b-1`
+takes the usual peers' WSS entrances away, which is what an outage of
+`ckb.guide` looks like to a browser; `docker start` brings them back.
+
 ## Checks
 
 CI runs these on every pull request (`.github/workflows/ci.yml`);

@@ -8,6 +8,7 @@ import { check, describeCheck } from "./commands/check.js";
 import { CONDITIONS, test, type Condition } from "./commands/test.js";
 import { uptime } from "./commands/uptime.js";
 import { verify } from "./commands/verify.js";
+import { watch } from "./commands/watch.js";
 
 const HELP = `lifeline: CKB nodes for light clients in the browser
 
@@ -28,6 +29,11 @@ ${Object.entries(CONDITIONS).map(([c, d]) => `        ${c}  ${d}`).join("\n")}
       One trial of B and one of C, in about five minutes: the light client
       should be cut off without the usual peers, and synced once independent
       nodes are listed.
+
+  lifeline watch [--network devnet] [--block-usual] [--seconds 3600] [--node <address>]...
+      Opens the light client in a visible Chromium with the usual peers and
+      the independent nodes, and prints which ones it is connected to every
+      2 seconds. Stop nodes meanwhile to see what an app sees.
 
   lifeline uptime [--network mainnet] [--out <file>]
       Checks every node in nodes/<network>.json and appends a row each to
@@ -67,6 +73,7 @@ async function main(argv: string[]): Promise<number> {
       watch: { type: "string" },
       "from-block": { type: "string" },
       out: { type: "string" },
+      "block-usual": { type: "boolean" },
       root: { type: "string" },
       help: { type: "boolean", short: "h" },
     },
@@ -111,6 +118,17 @@ async function main(argv: string[]): Promise<number> {
       const { lines, expected } = await verify({ root, network: network(values.network), extraNodes: values.node ?? [], log });
       for (const line of lines) console.log(line);
       return expected ? 0 : 1;
+    }
+    case "watch": {
+      await watch({
+        root,
+        network: network(values.network),
+        extraNodes: values.node ?? [],
+        blockUsual: values["block-usual"] ?? false,
+        durationSec: Number(values.seconds ?? 3600),
+        log,
+      });
+      return 0;
     }
     case "uptime": {
       const n = network(values.network);
