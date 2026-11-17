@@ -87,7 +87,7 @@ for (let i = 0; ; i++) {
   } catch {
     // the RPC is not up yet
   }
-  if (i > 180) throw new Error("no blocks after 3 minutes; see: docker compose -f devnet/compose.yaml logs miner");
+  if (i > 360) throw new Error("not 20 blocks after 6 minutes; see: docker compose -f devnet/compose.yaml logs miner");
   await sleep(1000);
 }
 

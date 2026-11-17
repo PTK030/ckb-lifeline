@@ -81,7 +81,9 @@ services:
       PUBLIC_HOST: b.lifeline.test
       PUBLIC_PORT: "4434"
 
-  # Mines a block every few seconds into guide-a (Dummy proof of work).
+  # Mines a block about every 8 seconds into guide-a (Dummy proof of work),
+  # the pace of mainnet: the light client updates its tip in steps, so a
+  # faster chain would always look a few blocks behind.
   miner:
     image: ${CKB_IMAGE:-nervos/ckb:v0.210.0}
     user: "0:0"
@@ -93,7 +95,7 @@ services:
       - -c
       - |
         until [ -f /var/lib/ckb/ckb-miner.toml ]; do sleep 1; done
-        sed -i 's#^rpc_url = .*#rpc_url = "http://guide-a:8114/"#; s#^value = .*#value = 2000#' /var/lib/ckb/ckb-miner.toml
+        sed -i 's#^rpc_url = .*#rpc_url = "http://guide-a:8114/"#; s#^value = .*#value = 8000#' /var/lib/ckb/ckb-miner.toml
         until ckb miner -C /var/lib/ckb; do sleep 2; done
     restart: unless-stopped
 
