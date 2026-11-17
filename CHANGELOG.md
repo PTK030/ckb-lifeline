@@ -34,13 +34,21 @@ browser light client does when its usual peers are gone.
   (a transfer sent through the light client), any number of trials, raw
   results in `data/results/`.
 - `lifeline verify`: one trial of B and one of C, in about five minutes.
+  Until independent nodes are listed for a network, it runs B and says where
+  to see C (`--node`, or the devnet).
+- `lifeline watch`: the light client in a visible browser, with a line every
+  2 seconds naming the nodes it is connected to; stop nodes meanwhile to see
+  what an app sees.
 - `lifeline uptime`: an hourly check of the nodes in `nodes/`, run by a
   workflow, logged on the `uptime-data` branch.
 - A browser page to run the light client by hand with a list of your own.
+  Every start begins with empty storage, so no peer from an earlier run or
+  another network comes along, and addresses are checked before it starts.
 - A container image with the tools and a browser.
 
 ### Devnet
 
 - `npm run devnet:up` starts four nodes of a local dev chain behind the same
   recipe, two standing in for the usual peers and two for independent nodes,
-  and a miner. Everything above works against it.
+  and a miner that makes a block about every 8 seconds, as on mainnet.
+  Everything above works against it.

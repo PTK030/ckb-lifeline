@@ -1,0 +1,12 @@
+{
+  "network": "testnet",
+  "location": "dom",
+  "verdicts": [
+    {
+      "id": "H1",
+      "claim": "Blocking the usual peers cuts the light client off",
+      "passed": true,
+      "detail": "3/3 trials ended with fewer than 2 peers"
+    }
+  ]
+}

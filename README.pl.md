@@ -57,7 +57,9 @@ Pomiary z 16 listopada 2026: oficjalny light client (`@nervosnetwork/ckb-light-c
 
 Bez tej jednej domeny light client w przeglądarce nie dostaje ani jednego peera. Test zmieniał wyłącznie resolver samej przeglądarki; poza tym wszystko było tak samo.
 
-Na lokalnym devnecie, gdzie dwa węzły udają zwykłych peerów, a dwa niezależne ([dane](data/results/2026-11-16-devnet-local-devnet)), niezależne węzły przywracają klienta: przelewy wysłane przez niego trafiały do bloku po 9–10 s, a odczytane saldo zgadzało się z pełnym węzłem. Drugiego peera osiągał jednak dopiero po około 60 s, bo pierwsze próby marnuje na adresy, których już nie ma. Pomiary na mainnecie z niezależnymi węzłami i z drugiej lokalizacji dojdą, gdy węzły ruszą.
+Na testnecie ta sama blokada też odcina klienta: 3 z 3 prób, 0 peerów przez całe 300 s ([dane](data/results/2026-11-17-testnet-dom)).
+
+Na lokalnym devnecie, gdzie dwa węzły udają zwykłych peerów, a dwa niezależne, a blok powstaje mniej więcej co 8 sekund, jak na mainnecie ([dane](data/results/2026-11-17-devnet-local-devnet)), niezależne węzły przywracają klienta: zsynchronizował się w 3 z 3 prób, a przelewy wysłane przez niego trafiały do bloku po 21–26 s. Drugiego peera osiągał jednak dopiero po około 60 s, bo pierwsze próby marnuje na adresy, których już nie ma. Wcześniejszy przebieg porównał też odczytane saldo z pełnym węzłem i się zgadzało ([dane](data/results/2026-11-16-devnet-local-devnet)). Pomiary na mainnecie z niezależnymi węzłami i z drugiej lokalizacji dojdą, gdy węzły ruszą.
 
 ## Dlaczego to robię
 

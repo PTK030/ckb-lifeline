@@ -1,0 +1,7 @@
+run,location,network,condition,trial,started_at,seconds,peers_at_end,peers_max,s_first_peer,s_two_peers,s_synced,tip_at_end,reference_tip,tip_lag,connected,cut_off,light_capacity,reference_capacity,tx_hash,s_tx_committed,errors
+2026-11-17T13-54-17,dom,testnet,A,1,2026-11-17T13:54:17.353Z,7,2,2,2.7,2.7,6.7,23094070,23094072,2,true,false,,,,,
+2026-11-17T13-54-17,dom,testnet,A,2,2026-11-17T13:54:25.099Z,13,2,2,2.6,2.6,12.7,23094073,23094075,2,true,false,,,,,
+2026-11-17T13-54-17,dom,testnet,A,3,2026-11-17T13:54:38.551Z,5,2,2,2.7,2.7,4.7,23094075,23094075,0,true,false,,,,,
+2026-11-17T13-54-17,dom,testnet,B,1,2026-11-17T13:54:43.974Z,300,0,0,,,,0,23094116,,false,true,,,,,
+2026-11-17T13-54-17,dom,testnet,B,2,2026-11-17T13:59:45.124Z,300,0,0,,,,0,23094149,,false,true,,,,,
+2026-11-17T13-54-17,dom,testnet,B,3,2026-11-17T14:04:47.276Z,300,0,0,,,,0,23094183,,false,true,,,,,

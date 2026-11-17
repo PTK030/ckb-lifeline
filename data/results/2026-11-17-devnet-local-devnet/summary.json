@@ -1,0 +1,24 @@
+{
+  "network": "devnet",
+  "location": "local-devnet",
+  "verdicts": [
+    {
+      "id": "H1",
+      "claim": "Blocking the usual peers cuts the light client off",
+      "passed": true,
+      "detail": "3/3 trials ended with fewer than 2 peers"
+    },
+    {
+      "id": "H2",
+      "claim": "Independent peers restore sync",
+      "passed": true,
+      "detail": "3/3 trials synced to within 3 blocks; median time to 2 peers 60.9 s (limit 120 s)"
+    },
+    {
+      "id": "H4",
+      "claim": "Transactions go through without the usual peers",
+      "passed": true,
+      "detail": "3/3 transactions committed within 10 minutes"
+    }
+  ]
+}

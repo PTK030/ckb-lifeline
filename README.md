@@ -57,7 +57,9 @@ Measured on 16 November 2026 with the official light client (`@nervosnetwork/ckb
 
 With the one domain gone, a light client in the browser does not get a single peer. The test only changed the browser's own resolver; everything else was the same.
 
-On the local devnet, where two nodes stand in for the usual peers and two for independent ones ([data](data/results/2026-11-16-devnet-local-devnet)), the independent nodes bring the client back: transfers sent through it were committed in 9 to 10 s, and the balance it read matched a full node's. It reached its second peer only after about 60 s, though, because it spends its first attempts on the addresses that are gone. Mainnet runs with independent nodes, and from a second location, follow as the nodes go up.
+On testnet the same block cuts the client off as well: 3 of 3 trials, 0 peers for the whole 300 s ([data](data/results/2026-11-17-testnet-dom)).
+
+On the local devnet, where two nodes stand in for the usual peers and two for independent ones, and a block comes about every 8 seconds as on mainnet ([data](data/results/2026-11-17-devnet-local-devnet)), the independent nodes bring the client back: it synced in 3 of 3 trials, and transfers sent through it were committed in 21 to 26 s. It reached its second peer only after about 60 s, though, because it spends its first attempts on the addresses that are gone. An earlier run also compared the balance it read with a full node's, and they matched ([data](data/results/2026-11-16-devnet-local-devnet)). Mainnet runs with independent nodes, and from a second location, follow as the nodes go up.
 
 ## Why I'm building it
 
