@@ -42,6 +42,9 @@ which nodes the client is connected to every 2 seconds. In a second terminal,
 `docker stop ckb-lifeline-devnet-tls-guide-a-1 ckb-lifeline-devnet-tls-guide-b-1`
 takes the usual peers' WSS entrances away, which is what an outage of
 `ckb.guide` looks like to a browser; `docker start` brings them back.
+`npm run devnet:blocks` prints each new block with its number of
+transactions, so a transfer sent meanwhile (condition F) shows up as a block
+with two.
 
 ## Checks
 
